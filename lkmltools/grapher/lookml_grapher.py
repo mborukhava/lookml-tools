@@ -40,6 +40,8 @@ class LookMlGrapher():
         # list of edge pair names
         self.models_to_explores = []
         self.explores_to_views = []
+        self.explores_to_explores = []
+        self.views_to_views = []
 
         # dict of node names with their type
         self.node_map = {}
@@ -136,8 +138,10 @@ class LookMlGrapher():
         '''
         g = nx.DiGraph()
         [g.add_node(node_name) for node_name in self.node_map]
-        [g.add_edge(p[0], p[1]) for p in self.models_to_explores]
-        [g.add_edge(p[0], p[1]) for p in self.explores_to_views]
+        [g.add_edge(p[0], p[1],weight=4) for p in self.models_to_explores]
+        [g.add_edge(p[0], p[1],weight=4) for p in self.explores_to_views]
+        [g.add_edge(p[0], p[1],weight=8) for p in self.explores_to_explores]
+        [g.add_edge(p[0], p[1],weight=8) for p in self.views_to_views]
         return g
 
     def process_explores(self, m, e):
@@ -156,14 +160,41 @@ class LookMlGrapher():
         self.node_map[explore_name] = NodeType.EXPLORE
         if m:
             self.models_to_explores.append((m, explore_name))
-        if 'from' in e:
-            # this is the first view mentioned
-            self.explores_to_views.append((explore_name, e['from']))
+        if 'extends' in e:
+            # add relationships to the explores that are being extended (inherited)
+            for parent in e['extends']:
+                self.explores_to_explores.append((parent, explore_name))
+        # this is the first view mentioned
+        key = 'from'
+        if key not in e:
+            # if there is no from parameter, the name of the explore will be taken as a view name
+            key = 'name'              
+        self.explores_to_views.append((explore_name, e[key]))
+        # but there could be more mentioned in the list (if any) of joins
+        if 'joins' in e:
+            for k in e['joins']:
+                key = 'from'
+                if key not in k:
+                    key = 'name'
+                self.explores_to_views.append((explore_name, k[key]))
 
-            # but there could be more mentioned in the list (if any) of joins
-            if 'joins' in e:
-                for k in e['joins']:
-                    self.explores_to_views.append((explore_name, k['from']))
+    def process_views(self, v):
+        '''extract the views referenced by these views and
+        add them to node map and add view-->view
+
+        Args:
+            v (str): view
+
+        Returns:
+            nothing. Side effect is to add to maps
+
+        '''
+        view_name = v['name']
+        self.node_map[view_name] = NodeType.VIEW
+        if 'extends' in v:
+            # add relationships to the views that are being extended (inherited)
+            for parent in v['extends']:
+                self.views_to_views.append((parent, view_name)) 
 
     def process_lookml(self, lookml):
         '''given a filepath to a LookML file, extract the views, models, explores as the nodes
@@ -179,15 +210,18 @@ class LookMlGrapher():
         '''
         if lookml.has_views():
             for v in lookml.views():
-                self.node_map[v['name']] = NodeType.VIEW
+                self.process_views(v)
         elif lookml.filetype == 'model':
             m = lookml.base_name
             self.node_map[m] = NodeType.MODEL
-            [self.process_explores(m, e) for e in lookml.explores()]
+            for e in lookml.explores():
+                self.process_explores(m, e)
         elif lookml.filetype == 'explore':
             for e in lookml.explores():
                 self.process_explores(None, e)
         else:
+            print(lookml.base_name)
+            print(lookml.filetype)
             raise Exception("No models, views, or explores? " + lookml.infilepath)
 
     def extract_graph_info(self, globstrings):
