@@ -165,18 +165,20 @@ class LookMlGrapher():
             for parent in e['extends']:
                 self.explores_to_explores.append((parent, explore_name))
         # this is the first view mentioned
-        key = 'from'
-        if key not in e:
-            # if there is no from parameter, the name of the explore will be taken as a view name
-            key = 'name'              
-        self.explores_to_views.append((explore_name, e[key]))
+        if 'from' in e:
+                self.explores_to_views.append((explore_name, e['from'] + '*'))
+        elif 'view_name' in e:
+            self.explores_to_views.append((explore_name, e['view_name'] + '*'))
+        elif 'extends' not in e:
+            # if there is no from/view_name parameter and no inheritance defined, explore name will be taken as a view name
+            self.explores_to_views.append((explore_name, e['name'] + '*'))
         # but there could be more mentioned in the list (if any) of joins
         if 'joins' in e:
             for k in e['joins']:
                 key = 'from'
                 if key not in k:
                     key = 'name'
-                self.explores_to_views.append((explore_name, k[key]))
+                self.explores_to_views.append((explore_name, k[key] + '*'))
 
     def process_views(self, v):
         '''extract the views referenced by these views and
@@ -189,12 +191,12 @@ class LookMlGrapher():
             nothing. Side effect is to add to maps
 
         '''
-        view_name = v['name']
+        view_name = v['name'] + '*'
         self.node_map[view_name] = NodeType.VIEW
         if 'extends' in v:
             # add relationships to the views that are being extended (inherited)
             for parent in v['extends']:
-                self.views_to_views.append((parent, view_name)) 
+                self.views_to_views.append((parent + '*', view_name)) 
 
     def process_lookml(self, lookml):
         '''given a filepath to a LookML file, extract the views, models, explores as the nodes
