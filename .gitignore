@@ -9,6 +9,12 @@ lkmltools/linter/rules/otherrules/__pycache__/
 lkmltools/updater/__pycache__/
 test/__pycache__/
 
+build/
+dist/
+lookml_tools.egg-info/
+
 .DS_Store
 .cache/
 graph.png
+config.json
+
