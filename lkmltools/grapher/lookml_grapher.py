@@ -122,6 +122,7 @@ class LookMlGrapher():
                     explored = True
             if not explored:
                 self.node_map[view] = NodeType.ORPHAN
+                print(view)
 
     def orphans(self):
         '''retrieve the set or orphaned views (if any) from the set of files
@@ -282,11 +283,12 @@ class LookMlGrapher():
 
         self.plot_graph(**args)
 
-    def get_connected_subgraph(self, nodes):
-        edges = self.models_to_explores
-        edges.extend(self.views_to_explores)
-        edges.extend(self.explores_to_explores)
-        edges.extend(self.views_to_views)
+    def get_connected_subgraph(self, root):
+        nodes = root.copy()
+        edges = self.models_to_explores.copy()
+        edges.extend(self.views_to_explores.copy())
+        edges.extend(self.explores_to_explores.copy())
+        edges.extend(self.views_to_views.copy())
         while True:
             changed = False
             for (p, c) in edges:
